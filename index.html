@@ -1,0 +1,730 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chapter 61: The Parable Of A Lost Creature</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #0b0f19; color: #f3f4f6; overflow: hidden; user-select: none; }
+        .font-cinzel { font-family: 'Cinzel', serif; }
+        .game-canvas { width: 100vw; height: 100vh; display: block; position: absolute; top: 0; left: 0; z-index: 1; }
+        .ui-layer { position: absolute; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 10; pointer-events: none; }
+        .interactive { pointer-events: auto; }
+        /* Custom scrollbar for game menus */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: rgba(15, 23, 42, 0.8); }
+        ::-webkit-scrollbar-thumb { background: #475569; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #64748b; }
+        @keyframes pulse-slow {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.85; transform: scale(1.02); }
+        }
+        .animate-pulse-slow { animation: pulse-slow 3s infinite ease-in-out; }
+    </style>
+</head>
+<body class="h-full relative">
+
+    <canvas id="gameCanvas" class="game-canvas"></canvas>
+
+    <div id="uiLayer" class="ui-layer flex flex-col justify-between p-4 md:p-6 select-none">
+        
+        <!-- Top Bar: Player Stats & Mini-map & Menu Buttons -->
+        <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 w-full">
+            <!-- Player Stats Box -->
+            <div class="interactive bg-slate-900/90 border border-slate-700/80 rounded-xl p-3 md:p-4 shadow-2xl backdrop-blur-md flex items-center gap-4 max-w-md w-full">
+                <div class="w-12 h-12 rounded-full bg-gradient-to-br from-amber-600 to-amber-800 flex items-center justify-center font-cinzel text-xl font-bold shadow-inner border border-amber-500/50 text-white">
+                    IE
+                </div>
+                <div class="flex-1">
+                    <div class="flex justify-between items-center mb-1">
+                        <span class="font-cinzel font-bold text-amber-400 tracking-wide text-sm md:text-base">Indi-Ego</span>
+                        <span id="playerLevel" class="text-xs px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/40 font-semibold">Lvl 1 Lazy Master</span>
+                    </div>
+                    <!-- Discipline Bar -->
+                    <div class="mb-1">
+                        <div class="flex justify-between text-xs text-slate-400 mb-0.5">
+                            <span>Discipline</span>
+                            <span id="disciplineText">100/100</span>
+                        </div>
+                        <div class="w-full h-2.5 bg-slate-800 rounded-full overflow-hidden border border-slate-700">
+                            <div id="disciplineBar" class="h-full bg-gradient-to-r from-emerald-500 to-teal-400 transition-all duration-300" style="width: 100%;"></div>
+                        </div>
+                    </div>
+                    <!-- Stamina / Sleep Bar -->
+                    <div>
+                        <div class="flex justify-between text-xs text-slate-400 mb-0.5">
+                            <span>Alertness / Stamina</span>
+                            <span id="staminaText">100%</span>
+                        </div>
+                        <div class="w-full h-2 bg-slate-800 rounded-full overflow-hidden border border-slate-700">
+                            <div id="staminaBar" class="h-full bg-gradient-to-r from-blue-500 to-indigo-500 transition-all duration-300" style="width: 100%;"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Currency & Quick Action Bar -->
+            <div class="flex items-center gap-3">
+                <div class="interactive bg-slate-900/90 border border-slate-700/80 rounded-xl px-4 py-3 shadow-xl backdrop-blur-md flex items-center gap-3">
+                    <div class="text-amber-400 font-bold text-lg">💰</div>
+                    <div>
+                        <div class="text-[10px] text-slate-400 uppercase tracking-wider font-semibold">Money</div>
+                        <div id="moneyDisplay" class="font-bold text-amber-300 text-base">$500</div>
+                    </div>
+                </div>
+
+                <!-- Menu Buttons -->
+                <div class="flex gap-2">
+                    <button onclick="toggleModal('questModal')" class="interactive bg-slate-800/90 hover:bg-slate-700 border border-slate-600/80 text-white p-3 rounded-xl shadow-lg transition flex items-center justify-center font-semibold text-sm gap-2">
+                        📜 <span class="hidden md:inline">Quests</span>
+                    </button>
+                    <button onclick="toggleModal('inventoryModal')" class="interactive bg-slate-800/90 hover:bg-slate-700 border border-slate-600/80 text-white p-3 rounded-xl shadow-lg transition flex items-center justify-center font-semibold text-sm gap-2">
+                        🎒 <span class="hidden md:inline">Inventory</span>
+                    </button>
+                    <button onclick="toggleModal('skillModal')" class="interactive bg-slate-800/90 hover:bg-slate-700 border border-slate-600/80 text-white p-3 rounded-xl shadow-lg transition flex items-center justify-center font-semibold text-sm gap-2">
+                        ⚡ <span class="hidden md:inline">Skills</span>
+                    </button>
+                    <button onclick="toggleModal('loreModal')" class="interactive bg-slate-800/90 hover:bg-slate-700 border border-slate-600/80 text-white p-3 rounded-xl shadow-lg transition flex items-center justify-center font-semibold text-sm gap-2">
+                        📖 <span class="hidden md:inline">Story</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Middle Screen: Interaction Prompt & Dynamic Feedback -->
+        <div class="flex flex-col items-center justify-center pointer-events-none my-auto">
+            <div id="interactionPrompt" class="hidden interactive bg-slate-900/95 border-2 border-amber-500/80 text-white px-6 py-3 rounded-2xl shadow-2xl backdrop-blur-md flex items-center gap-3 animate-pulse-slow">
+                <span id="promptIcon" class="text-2xl">🐷</span>
+                <div>
+                    <div id="promptTitle" class="font-bold font-cinzel text-amber-400 text-sm">Press [E] to Interact</div>
+                    <div id="promptDesc" class="text-xs text-slate-300">Talk to Pet Market Owner</div>
+                </div>
+            </div>
+
+            <!-- In-game Notification Banner -->
+            <div id="notificationBanner" class="hidden bg-slate-900/95 border border-indigo-500/80 text-white px-6 py-3 rounded-xl shadow-2xl backdrop-blur-md transition-all duration-500 max-w-lg text-center mt-4">
+                <div id="notifTitle" class="font-bold font-cinzel text-indigo-400 text-sm">Quest Updated</div>
+                <div id="notifText" class="text-xs text-slate-200 mt-1">You bought the cursed omnivorous pig for $500!</div>
+            </div>
+        </div>
+
+        <!-- Bottom Controls & Time Info -->
+        <div class="flex flex-col md:flex-row justify-between items-end md:items-center gap-4 w-full">
+            <!-- Controls Hint -->
+            <div class="interactive bg-slate-900/80 border border-slate-800 rounded-xl px-4 py-2.5 backdrop-blur-md text-xs text-slate-300 shadow-lg flex flex-wrap gap-3">
+                <span><b>W, A, S, D / Arrows:</b> Move</span>
+                <span><b>E:</b> Interact / Discipline</span>
+                <span><b>SPACE:</b> Nap (Rest)</span>
+                <span><b>Mouse:</b> Look Around</span>
+            </div>
+
+            <!-- Game Time & Status -->
+            <div class="interactive bg-slate-900/90 border border-slate-700/80 rounded-xl px-4 py-3 shadow-xl backdrop-blur-md flex items-center gap-4">
+                <div class="text-center">
+                    <div class="text-[10px] text-slate-400 uppercase tracking-wider font-semibold">Town of Omegapo</div>
+                    <div id="clockDisplay" class="font-bold font-cinzel text-amber-400 text-lg">12:00 PM</div>
+                </div>
+                <div class="h-8 w-px bg-slate-700"></div>
+                <button onclick="triggerNap()" id="napButton" class="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white px-4 py-2 rounded-lg font-semibold text-xs shadow transition flex items-center gap-2">
+                    😴 Take 3PM Nap
+                </button>
+            </div>
+        </div>
+    </div>
+
+    
+    <!-- Dialogue Modal -->
+    <div id="dialogueModal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-slate-900 border-2 border-amber-500/70 rounded-2xl max-w-2xl w-full p-6 shadow-2xl relative">
+            <div class="flex items-center gap-4 mb-4 border-b border-slate-800 pb-3">
+                <div id="dialogueAvatar" class="w-14 h-14 rounded-full bg-amber-600/30 border border-amber-500 flex items-center justify-center text-2xl">
+                    🧙‍♂️
+                </div>
+                <div>
+                    <h3 id="dialogueSpeaker" class="font-cinzel font-bold text-lg text-amber-400">Pet Market Owner</h3>
+                    <p class="text-xs text-slate-400">Omegapo Central Market</p>
+                </div>
+            </div>
+            <div id="dialogueText" class="text-slate-200 text-sm md:text-base leading-relaxed mb-6 min-h-[90px]">
+                Welcome to Omegapo! Are you looking for a companion to cure your boredom? I have a wonderful omnivorous pig right here for $500!
+            </div>
+            <div id="dialogueOptions" class="flex flex-col gap-2">
+                <!-- Dynamically populated dialogue choices -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Quest Modal -->
+    <div id="questModal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-slate-900 border border-slate-700 rounded-2xl max-w-xl w-full p-6 shadow-2xl relative max-h-[85vh] flex flex-col">
+            <div class="flex justify-between items-center mb-4 border-b border-slate-800 pb-3">
+                <h3 class="font-cinzel font-bold text-xl text-amber-400 flex items-center gap-2">📜 Quest Log</h3>
+                <button onclick="toggleModal('questModal')" class="text-slate-400 hover:text-white text-xl font-bold px-2">&times;</button>
+            </div>
+            <div class="overflow-y-auto flex-1 space-y-4 pr-1">
+                <div class="bg-slate-800/70 border border-slate-700 rounded-xl p-4">
+                    <div class="flex justify-between items-start mb-1">
+                        <h4 class="font-bold text-amber-300 text-sm">Main Quest: The Cursed Companion</h4>
+                        <span id="questStatusMain" class="text-xs px-2 py-0.5 bg-amber-500/20 text-amber-300 rounded border border-amber-500/40">Active</span>
+                    </div>
+                    <p class="text-xs text-slate-300 leading-relaxed">
+                        Buy the omnivorous pig from the Pet Market Owner for $500. He warned that the pig is cursed with a childish brain and must be strictly disciplined. If you fail or fall asleep at 3 PM, the gluttonous townspeople might eat it!
+                    </p>
+                    <div class="mt-3 text-[11px] text-slate-400 border-t border-slate-700/60 pt-2 flex justify-between">
+                        <span>Progress: <span id="questProgressText">Find & Buy the Pig at Pet Market</span></span>
+                    </div>
+                </div>
+
+                <div class="bg-slate-800/70 border border-slate-700 rounded-xl p-4">
+                    <div class="flex justify-between items-start mb-1">
+                        <h4 class="font-bold text-slate-300 text-sm">Side Quest: Town Discipline & Vigilance</h4>
+                        <span id="questStatusSide" class="text-xs px-2 py-0.5 bg-slate-700 text-slate-300 rounded">Pending</span>
+                    </div>
+                    <p class="text-xs text-slate-400 leading-relaxed">
+                        Patrol the streets of Omegapo, interact with the pig to keep its discipline high, and prevent the townsfolk from noticing its vulnerability.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Inventory Modal -->
+    <div id="inventoryModal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-slate-900 border border-slate-700 rounded-2xl max-w-xl w-full p-6 shadow-2xl relative max-h-[85vh] flex flex-col">
+            <div class="flex justify-between items-center mb-4 border-b border-slate-800 pb-3">
+                <h3 class="font-cinzel font-bold text-xl text-amber-400 flex items-center gap-2">🎒 Inventory & Equipment</h3>
+                <button onclick="toggleModal('inventoryModal')" class="text-slate-400 hover:text-white text-xl font-bold px-2">&times;</button>
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
+                <div class="bg-slate-800/80 border border-slate-700 rounded-xl p-3 text-center">
+                    <div class="text-3xl mb-1">💰</div>
+                    <div class="text-xs font-bold text-slate-300">Wallet</div>
+                    <div id="invMoney" class="text-sm text-amber-400 font-bold">$500.00</div>
+                </div>
+                <div class="bg-slate-800/80 border border-slate-700 rounded-xl p-3 text-center">
+                    <div class="text-3xl mb-1" id="invPigIcon">❌</div>
+                    <div class="text-xs font-bold text-slate-300">Pet Pig</div>
+                    <div id="invPigStatus" class="text-xs text-slate-400">Not Acquired</div>
+                </div>
+                <div class="bg-slate-800/80 border border-slate-700 rounded-xl p-3 text-center">
+                    <div class="text-3xl mb-1">📿</div>
+                    <div class="text-xs font-bold text-slate-300">Cursed Charm</div>
+                    <div id="invCharmStatus" class="text-xs text-amber-300">Active Warning</div>
+                </div>
+            </div>
+            <div class="bg-slate-800/50 border border-slate-700/60 rounded-xl p-4 flex-1">
+                <h4 class="font-bold text-slate-300 text-xs uppercase tracking-wider mb-2">Item Description</h4>
+                <p id="invItemDesc" class="text-xs text-slate-400 leading-relaxed">
+                    Select an item or pet to inspect its details and status. Remember the owner's condition: discipline the pig or face its tragic fate.
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Skill Tree Modal -->
+    <div id="skillModal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-slate-900 border border-slate-700 rounded-2xl max-w-xl w-full p-6 shadow-2xl relative max-h-[85vh] flex flex-col">
+            <div class="flex justify-between items-center mb-4 border-b border-slate-800 pb-3">
+                <h3 class="font-cinzel font-bold text-xl text-amber-400 flex items-center gap-2">⚡ Progression & Skill Tree</h3>
+                <button onclick="toggleModal('skillModal')" class="text-slate-400 hover:text-white text-xl font-bold px-2">&times;</button>
+            </div>
+            <div class="space-y-3 overflow-y-auto flex-1 pr-1">
+                <!-- Skill 1 -->
+                <div class="bg-slate-800/80 border border-slate-700 rounded-xl p-4 flex items-center justify-between">
+                    <div>
+                        <h4 class="font-bold text-amber-300 text-sm">Strict Discipline Technique</h4>
+                        <p class="text-xs text-slate-400">Increases pig discipline recovery speed by 50%.</p>
+                    </div>
+                    <button onclick="unlockSkill('skill1')" id="btnSkill1" class="bg-amber-600 hover:bg-amber-500 text-white px-3 py-1.5 rounded-lg text-xs font-semibold transition">
+                        Unlock (Free)
+                    </button>
+                </div>
+                <!-- Skill 2 -->
+                <div class="bg-slate-800/80 border border-slate-700 rounded-xl p-4 flex items-center justify-between">
+                    <div>
+                        <h4 class="font-bold text-slate-300 text-sm">Vigilant Alarm Clock</h4>
+                        <p class="text-xs text-slate-400">Prevents deep slumber at 3 PM, keeping you alert against greed.</p>
+                    </div>
+                    <button onclick="unlockSkill('skill2')" id="btnSkill2" class="bg-slate-700 hover:bg-slate-600 text-white px-3 py-1.5 rounded-lg text-xs font-semibold transition opacity-70">
+                        Locked
+                    </button>
+                </div>
+                <!-- Skill 3 -->
+                <div class="bg-slate-800/80 border border-slate-700 rounded-xl p-4 flex items-center justify-between">
+                    <div>
+                        <h4 class="font-bold text-slate-300 text-sm">Master Disciplinarian Class</h4>
+                        <p class="text-xs text-slate-400">Fully breaks the ancient curse and pacifies town gluttons.</p>
+                    </div>
+                    <button onclick="unlockSkill('skill3')" id="btnSkill3" class="bg-slate-700 hover:bg-slate-600 text-white px-3 py-1.5 rounded-lg text-xs font-semibold transition opacity-70">
+                        Locked
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Lore / Story Modal -->
+    <div id="loreModal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-slate-900 border border-slate-700 rounded-2xl max-w-2xl w-full p-6 shadow-2xl relative max-h-[85vh] flex flex-col">
+            <div class="flex justify-between items-center mb-4 border-b border-slate-800 pb-3">
+                <h3 class="font-cinzel font-bold text-xl text-amber-400 flex items-center gap-2">📖 The Parable Of A Lost Creature</h3>
+                <button onclick="toggleModal('loreModal')" class="text-slate-400 hover:text-white text-xl font-bold px-2">&times;</button>
+            </div>
+            <div class="overflow-y-auto flex-1 space-y-3 pr-2 text-xs md:text-sm text-slate-300 leading-relaxed">
+                <p class="font-semibold text-amber-300">Chapter 61: Bedtime Stories — April 10, 2020</p>
+                <p>Once upon a time in the town of Omegapo, a man named Indi-Ego felt profoundly bored. Seeking companionship, he visited the pet market and purchased an omnivorous pig for $500.</p>
+                <p>The owner gave a stern warning: <i>"I have only 1 condition. You need to care of the pig and discipline its childish brain. If you leave it without discipline, the hungry and starving townspeople will view it as a meal!"</i></p>
+                <p>Overcome by laziness, Indi-Ego took a nap at 3 PM. Awakened at 6 PM by strange jolly noises, he discovered his beloved pet had roamed outside and been slaughtered by the gluttonous crowd.</p>
+                <p class="italic text-amber-400 border-l-2 border-amber-500 pl-3 my-2">
+                    Moral Lesson: If you get what you want, don't forget to protect and discipline it from harm. Laziness breeds regret, and unaddressed pride leaves wounds that can never be undone.
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Game Over / Ending Modal -->
+    <div id="endingModal" class="fixed inset-0 bg-black/90 backdrop-blur-md z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-slate-900 border-2 border-red-500/80 rounded-2xl max-w-xl w-full p-8 shadow-2xl text-center relative">
+            <div class="text-5xl mb-4" id="endingIcon">🍖</div>
+            <h2 id="endingTitle" class="font-cinzel font-bold text-2xl text-red-400 mb-2">Tragedy in Omegapo</h2>
+            <p id="endingText" class="text-slate-300 text-sm leading-relaxed mb-6">
+                Because of laziness and pride, you fell asleep at 3 PM. The cursed pig wandered outside, and the gluttonous townspeople turned it into a roasted feast!
+            </p>
+            <button onclick="restartGame()" class="bg-gradient-to-r from-amber-600 to-red-600 hover:from-amber-500 hover:to-red-500 text-white font-semibold px-6 py-3 rounded-xl shadow-lg transition text-sm">
+                🔄 Play Again & Break the Curse
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // Game State Variables
+        const gameState = {
+            money: 500,
+            discipline: 100,
+            stamina: 100,
+            hasPig: false,
+            pigDiscipline: 50,
+            timeHour: 12, // Starting at 12 PM (1200)
+            timeMinute: 0,
+            gameTimeSpeed: 10, // speed multiplier
+            hasNap: false,
+            gameEnded: false,
+            questStage: 0, // 0: Buy Pig, 1: Discipline & Protect, 2: 3PM Nap Event, 3: Finale
+            unlockedSkills: { skill1: false, skill2: false, skill3: false }
+        };
+
+        // Three.js Setup
+        const canvas = document.getElementById('gameCanvas');
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x0f172a);
+        scene.fog = new THREE.FogExp2(0x0f172a, 0.025);
+
+        const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+        // Lighting
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+        scene.add(ambientLight);
+
+        const dirLight = new THREE.DirectionalLight(0xffedd5, 0.8);
+        dirLight.position.set(20, 40, 20);
+        dirLight.castShadow = true;
+        dirLight.shadow.mapSize.width = 2048;
+        dirLight.shadow.mapSize.height = 2048;
+        scene.add(dirLight);
+
+        // Ground Plane
+        const groundGeo = new THREE.PlaneGeometry(200, 200);
+        const groundMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.9 });
+        const ground = new THREE.Mesh(groundGeo, groundMat);
+        ground.rotation.x = -Math.PI / 2;
+        ground.receiveShadow = true;
+        scene.add(ground);
+
+        // Grid / Roads
+        const roadMat = new THREE.MeshStandardMaterial({ color: 0x334155, roughness: 0.7 });
+        const road1 = new THREE.Mesh(new THREE.PlaneGeometry(16, 200), roadMat);
+        road1.rotation.x = -Math.PI / 2;
+        road1.position.y = 0.01;
+        scene.add(road1);
+
+        const road2 = new THREE.Mesh(new THREE.PlaneGeometry(200, 16), roadMat);
+        road2.rotation.x = -Math.PI / 2;
+        road2.position.y = 0.02;
+        scene.add(road2);
+
+        // Buildings helper function
+        function createBuilding(x, z, width, depth, height, color) {
+            const group = new THREE.Group();
+            const bGeo = new THREE.BoxGeometry(width, height, depth);
+            const bMat = new THREE.MeshStandardMaterial({ color: color, roughness: 0.6 });
+            const mesh = new THREE.Mesh(bGeo, bMat);
+            mesh.position.y = height / 2;
+            mesh.castShadow = true;
+            mesh.receiveShadow = true;
+            group.add(mesh);
+
+            // Roof
+            const rGeo = new THREE.ConeGeometry(Math.max(width, depth) * 0.7, 4, 4);
+            const rMat = new THREE.MeshStandardMaterial({ color: 0x7f1d1d, roughness: 0.5 });
+            const roof = new THREE.Mesh(rGeo, rMat);
+            roof.position.y = height + 2;
+            roof.rotation.y = Math.PI / 4;
+            roof.castShadow = true;
+            group.add(roof);
+
+            group.position.set(x, 0, z);
+            scene.add(group);
+            return group;
+        }
+
+        // Build Town of Omegapo Buildings
+        createBuilding(-30, -30, 16, 16, 12, 0x475569); // Indi-Ego's House
+        createBuilding(30, -30, 18, 18, 14, 0x1e3a8a); // Pet Market
+        createBuilding(-30, 30, 20, 14, 10, 0x065f46); // Town Hall
+        createBuilding(30, 30, 16, 16, 12, 0x78350f); // Bakery / Tavern
+
+        // Player Character (Indi-Ego)
+        const playerGroup = new THREE.Group();
+        const bodyMat = new THREE.MeshStandardMaterial({ color: 0xd97706, roughness: 0.5 });
+        
+        // Torso
+        const torso = new THREE.Mesh(new THREE.BoxGeometry(1.2, 1.8, 0.8), bodyMat);
+        torso.position.y = 1.8;
+        torso.castShadow = true;
+        playerGroup.add(torso);
+
+        // Head
+        const head = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.8, 0.8), new THREE.MeshStandardMaterial({ color: 0xfde68a }));
+        head.position.y = 3.1;
+        head.castShadow = true;
+        playerGroup.add(head);
+
+        playerGroup.position.set(0, 0, 10);
+        scene.add(playerGroup);
+
+        // Pet Market Owner NPC
+        const ownerGroup = new THREE.Group();
+        const ownerMesh = new THREE.Mesh(new THREE.BoxGeometry(1.2, 1.8, 0.8), new THREE.MeshStandardMaterial({ color: 0x2563eb }));
+        ownerMesh.position.y = 1.8;
+        ownerGroup.add(ownerMesh);
+        ownerGroup.position.set(22, 0, -22);
+        scene.add(ownerGroup);
+
+        // Pig 3D Model
+        const pigGroup = new THREE.Group();
+        const pigBody = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.9, 2.0), new THREE.MeshStandardMaterial({ color: 0xf472b6, roughness: 0.5 }));
+        pigBody.position.y = 0.8;
+        pigBody.castShadow = true;
+        pigGroup.add(pigBody);
+
+        // Pig Snout
+        const pigSnout = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.4, 0.4), new THREE.MeshStandardMaterial({ color: 0xdb2777 }));
+        pigSnout.position.set(0, 0.7, 1.1);
+        pigGroup.add(pigSnout);
+
+        pigGroup.position.set(20, 0, -18);
+        scene.add(pigGroup);
+
+        const keys = { w: false, a: false, s: false, d: false };
+        const moveSpeed = 0.25;
+
+        window.addEventListener('keydown', (e) => {
+            if (e.key === 'w' || e.key === 'W' || e.key === 'ArrowUp') keys.w = true;
+            if (e.key === 's' || e.key === 'S' || e.key === 'ArrowDown') keys.s = true;
+            if (e.key === 'a' || e.key === 'A' || e.key === 'ArrowLeft') keys.a = true;
+            if (e.key === 'd' || e.key === 'D' || e.key === 'ArrowRight') keys.d = true;
+            if (e.key === 'e' || e.key === 'E') handleInteraction();
+            if (e.code === 'Space') {
+                e.preventDefault();
+                triggerNap();
+            }
+        });
+
+        window.addEventListener('keyup', (e) => {
+            if (e.key === 'w' || e.key === 'W' || e.key === 'ArrowUp') keys.w = false;
+            if (e.key === 's' || e.key === 'S' || e.key === 'ArrowDown') keys.s = false;
+            if (e.key === 'a' || e.key === 'A' || e.key === 'ArrowLeft') keys.a = false;
+            if (e.key === 'd' || e.key === 'D' || e.key === 'ArrowRight') keys.d = false;
+        });
+
+        // Mouse look / rotation simulation
+        let isDragging = false;
+        let previousMousePosition = { x: 0, y: 0 };
+        let cameraAngle = 0;
+
+        window.addEventListener('mousedown', (e) => {
+            if (e.target.tagName === 'CANVAS') {
+                isDragging = true;
+                previousMousePosition = { x: e.clientX, y: e.clientY };
+            }
+        });
+
+        window.addEventListener('mousemove', (e) => {
+            if (!isDragging) return;
+            const deltaX = e.clientX - previousMousePosition.x;
+            cameraAngle -= deltaX * 0.005;
+            previousMousePosition = { x: e.clientX, y: e.clientY };
+        });
+
+        window.addEventListener('mouseup', () => { isDragging = false; });
+
+        function updateGameTime() {
+            if (gameState.gameEnded) return;
+            
+            // Advance time
+            gameState.timeMinute += 1 * (gameState.gameTimeSpeed / 10);
+            if (gameState.timeMinute >= 60) {
+                gameState.timeMinute = 0;
+                gameState.timeHour++;
+                if (gameState.timeHour > 24) gameState.timeHour = 1;
+            }
+
+            // Format clock
+            let displayHour = gameState.timeHour > 12 ? gameState.timeHour - 12 : gameState.timeHour;
+            let ampm = gameState.timeHour >= 12 ? 'PM' : 'AM';
+            let displayMin = Math.floor(gameState.timeMinute).toString().padStart(2, '0');
+            document.getElementById('clockDisplay').innerText = `${displayHour}:${displayMin} ${ampm}`;
+
+            // Check 3 PM Event (15:00)
+            if (gameState.timeHour === 15 && !gameState.hasNap && gameState.hasPig) {
+                showNotification("Lazy Afternoon", "Indi-Ego feels sleepy at 3 PM... Press SPACE or click Take Nap!");
+            }
+
+            // Check 6 PM Event (18:00) - If napped without discipline
+            if (gameState.timeHour === 18 && gameState.hasNap && gameState.questStage < 3) {
+                triggerTragedyEnding();
+            }
+
+            // Pig roaming logic if acquired and undisciplined
+            if (gameState.hasPig && gameState.timeHour >= 14 && gameState.timeHour < 18) {
+                pigGroup.position.x += Math.sin(Date.now() * 0.001) * 0.05;
+                pigGroup.position.z += Math.cos(Date.now() * 0.001) * 0.05;
+            }
+        }
+
+        setInterval(updateGameTime, 500);
+
+        function handleInteraction() {
+            if (gameState.gameEnded) return;
+
+            // Check distance to Pet Market Owner
+            const distToOwner = playerGroup.position.distanceTo(ownerGroup.position);
+            if (distToOwner < 6) {
+                openOwnerDialogue();
+                return;
+            }
+
+            // Check distance to Pig
+            const distToPig = playerGroup.position.distanceTo(pigGroup.position);
+            if (distToPig < 5 && gameState.hasPig) {
+                disciplinePig();
+                return;
+            }
+        }
+
+        function openOwnerDialogue() {
+            const modal = document.getElementById('dialogueModal');
+            const textEl = document.getElementById('dialogueText');
+            const optionsEl = document.getElementById('dialogueOptions');
+            
+            modal.classList.remove('hidden');
+
+            if (!gameState.hasPig) {
+                textEl.innerHTML = `Welcome to Omegapo! I see you are seeking a companion because of boredom. I have an omnivorous pig right here for <b>$500</b>.<br><br><b>Owner's Warning:</b> <i>"I have only 1 condition. You need to care for the pig and discipline its childish brain. If you leave it without discipline, the hungry townspeople will eat it!"</i>`;
+                optionsEl.innerHTML = `
+                    <button onclick="buyPig()" class="bg-amber-600 hover:bg-amber-500 text-white p-3 rounded-xl font-semibold text-sm transition">Buy Pig for $500</button>
+                    <button onclick="toggleModal('dialogueModal')" class="bg-slate-800 hover:bg-slate-700 text-slate-300 p-3 rounded-xl font-semibold text-sm transition">Leave Market</button>
+                `;
+            } else {
+                textEl.innerHTML = `Thank you again for buying the pig! Remember to maintain its discipline or the curse will cause it to wander outside into the hands of gluttonous villagers!`;
+                optionsEl.innerHTML = `
+                    <button onclick="toggleModal('dialogueModal')" class="bg-slate-800 hover:bg-slate-700 text-slate-300 p-3 rounded-xl font-semibold text-sm transition">Close</button>
+                `;
+            }
+        }
+
+        function buyPig() {
+            if (gameState.money >= 500 && !gameState.hasPig) {
+                gameState.money -= 500;
+                gameState.hasPig = true;
+                gameState.questStage = 1;
+                
+                document.getElementById('moneyDisplay').innerText = `$${gameState.money}`;
+                document.getElementById('invMoney').innerText = `$${gameState.money}.00`;
+                document.getElementById('invPigIcon').innerText = '🐷';
+                document.getElementById('invPigStatus').innerText = 'Acquired & Cursed';
+                document.getElementById('questProgressText').innerText = 'Discipline the Pig & Stay Alert';
+                
+                showNotification("Pet Acquired!", "You bought the omnivorous pig for $500. Beware the owner's curse!");
+                toggleModal('dialogueModal');
+            } else if (gameState.hasPig) {
+                showNotification("Notice", "You already own the pig!");
+                toggleModal('dialogueModal');
+            } else {
+                showNotification("Not Enough Money", "You need $500 to buy the pig!");
+                toggleModal('dialogueModal');
+            }
+        }
+
+        function disciplinePig() {
+            gameState.pigDiscipline = Math.min(100, gameState.pigDiscipline + 25);
+            gameState.discipline = Math.min(100, gameState.discipline + 15);
+            updateUIBars();
+            showNotification("Discipline Applied", "You disciplined your pet pig, reinforcing its mind against the curse!");
+        }
+
+        function triggerNap() {
+            if (!gameState.hasPig) {
+                showNotification("Notice", "You have no pet to worry about yet. Buy the pig first!");
+                return;
+            }
+            gameState.hasNap = true;
+            gameState.stamina = 100;
+            updateUIBars();
+            showNotification("Deep Nap Taken", "Indi-Ego slept soundly... The clock jumps to 6:00 PM!");
+            
+            // Fast forward time to 6 PM
+            gameState.timeHour = 18;
+            gameState.timeMinute = 0;
+            
+            setTimeout(() => {
+                if (gameState.pigDiscipline < 75) {
+                    triggerTragedyEnding();
+                } else {
+                    triggerSuccessEnding();
+                }
+            }, 1000);
+        }
+
+        function triggerTragedyEnding() {
+            gameState.gameEnded = true;
+            document.getElementById('endingModal').classList.remove('hidden');
+            document.getElementById('endingIcon').innerText = '🍖';
+            document.getElementById('endingTitle').innerText = 'The Parable\'s Tragic Ending';
+            document.getElementById('endingText').innerHTML = `
+                Because of laziness and pride, you fell asleep at 3 PM without proper discipline. The pig's childish brain wandered outside, and the gluttonous townspeople slaughtered and roasted it for a feast!<br><br>
+                <b>Moral Lesson:</b> <i>"If you get what you want, don't forget to protect and discipline it from harm. Laziness breeds regret!"</i>
+            `;
+        }
+
+        function triggerSuccessEnding() {
+            gameState.gameEnded = true;
+            gameState.questStage = 3;
+            document.getElementById('endingModal').classList.remove('hidden');
+            document.getElementById('endingIcon').innerText = '🌟';
+            document.getElementById('endingTitle').innerText = 'Curse Broken Successfully!';
+            document.getElementById('endingText').innerHTML = `
+                Through rigorous discipline and vigilance, you protected your beloved pet from the gluttony of Omegapo! The curse is broken, and Indi-Ego lives in harmonious companionship.<br><br>
+                <b>Moral Lesson:</b> <i>"Discipline without laziness ensures your precious bonds remain safe and sound."</i>
+            `;
+        }
+
+        function unlockSkill(skillId) {
+            if (skillId === 'skill1' && !gameState.unlockedSkills.skill1) {
+                gameState.unlockedSkills.skill1 = true;
+                document.getElementById('btnSkill1').innerText = 'Unlocked';
+                document.getElementById('btnSkill1').className = 'bg-emerald-600 text-white px-3 py-1.5 rounded-lg text-xs font-semibold';
+                document.getElementById('btnSkill2').classList.remove('opacity-70');
+                document.getElementById('btnSkill2').classList.replace('bg-slate-700', 'bg-amber-600');
+                document.getElementById('btnSkill2').innerText = 'Unlock (100 pts)';
+                showNotification("Skill Unlocked", "Strict Discipline Technique mastered!");
+            } else if (skillId === 'skill2' && gameState.unlockedSkills.skill1 && !gameState.unlockedSkills.skill2) {
+                gameState.unlockedSkills.skill2 = true;
+                document.getElementById('btnSkill2').innerText = 'Unlocked';
+                document.getElementById('btnSkill2').className = 'bg-emerald-600 text-white px-3 py-1.5 rounded-lg text-xs font-semibold';
+                document.getElementById('btnSkill3').classList.remove('opacity-70');
+                document.getElementById('btnSkill3').classList.replace('bg-slate-700', 'bg-amber-600');
+                document.getElementById('btnSkill3').innerText = 'Unlock (Master)';
+                showNotification("Skill Unlocked", "Vigilant Alarm Clock acquired!");
+            }
+        }
+
+        function toggleModal(modalId) {
+            const modal = document.getElementById(modalId);
+            if (modal) modal.classList.toggle('hidden');
+        }
+
+        function showNotification(title, text) {
+            const banner = document.getElementById('notificationBanner');
+            document.getElementById('notifTitle').innerText = title;
+            document.getElementById('notifText').innerText = text;
+            banner.classList.remove('hidden');
+            setTimeout(() => banner.classList.add('hidden'), 4000);
+        }
+
+        function updateUIBars() {
+            document.getElementById('disciplineBar').style.width = `${gameState.discipline}%`;
+            document.getElementById('disciplineText').innerText = `${gameState.discipline}/100`;
+            document.getElementById('staminaBar').style.width = `${gameState.stamina}%`;
+            document.getElementById('staminaText').innerText = `${gameState.stamina}%`;
+        }
+
+        function restartGame() {
+            window.location.reload();
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            // Player Movement handling
+            const moveX = (keys.d ? 1 : 0) - (keys.a ? 1 : 0);
+            const moveZ = (keys.s ? 1 : 0) - (keys.w ? 1 : 0);
+
+            if (moveX !== 0 || moveZ !== 0) {
+                const angle = cameraAngle;
+                playerGroup.position.x += (moveX * Math.cos(angle) - moveZ * Math.sin(angle)) * moveSpeed;
+                playerGroup.position.z += (moveX * Math.sin(angle) + moveZ * Math.cos(angle)) * moveSpeed;
+            }
+
+            // Camera follow
+            const camDist = 12;
+            const camHeight = 8;
+            camera.position.x = playerGroup.position.x + Math.sin(cameraAngle) * camDist;
+            camera.position.z = playerGroup.position.z + Math.cos(cameraAngle) * camDist;
+            camera.position.y = playerGroup.position.y + camHeight;
+            camera.lookAt(playerGroup.position.x, playerGroup.position.y + 1.5, playerGroup.position.z);
+
+            // Proximity checks for Interaction Prompt
+            const distToOwner = playerGroup.position.distanceTo(ownerGroup.position);
+            const distToPig = playerGroup.position.distanceTo(pigGroup.position);
+            const prompt = document.getElementById('interactionPrompt');
+
+            if (distToOwner < 6) {
+                prompt.classList.remove('hidden');
+                document.getElementById('promptIcon').innerText = '🧙‍♂️';
+                document.getElementById('promptTitle').innerText = 'Press [E] to Talk';
+                document.getElementById('promptDesc').innerText = 'Pet Market Owner (Buy Pig)';
+            } else if (distToPig < 5 && gameState.hasPig) {
+                prompt.classList.remove('hidden');
+                document.getElementById('promptIcon').innerText = '🐷';
+                document.getElementById('promptTitle').innerText = 'Press [E] to Discipline';
+                document.getElementById('promptDesc').innerText = 'Train and care for your pet pig';
+            } else {
+                prompt.classList.add('hidden');
+            }
+
+            renderer.render(scene, camera);
+        }
+
+        // Window resize handler
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        // Start animation loop on window load
+        window.onload = function() {
+            animate();
+            showNotification("Welcome to Omegapo", "Walk to the Pet Market Owner to buy your cursed omnivorous pig for $500!");
+        };
+    </script>
+</body>
+</html>
